@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #1a1a1a, #4a4a4a);
+            font-family: Arial, sans-serif;
+        }
+
+        .home-link {
+            position: fixed;
+            top: 30px;
+            left: 30px;
+            color: #fff;
+            text-decoration: none;
+            font-size: 18px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.3);
+            transition: text-shadow 0.2s;
+            padding: 10px;
+        }
+
+        .home-link:hover {
+            text-shadow: 0 0 15px rgba(255,255,255,0.5);
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .title {
+            color: #fff;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+            margin-bottom: 20px;
+        }
+
+        .slot-machine {
+            display: flex;
+            gap: 10px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .slot {
+            width: 150px;
+            height: 150px;
+            background: #3a3a3a;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .slot-strip {
+            position: absolute;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0s linear;
+        }
+
+        .slot-item {
+            width: 150px;
+            height: 150px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .slot-item img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            user-select: none;
+            -webkit-user-drag: none;
+            border-radius: 12px;
+        }
+
+        .spin-button {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #ff0000;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 0 15px rgba(255,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .spin-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px rgba(255,0,0,0.5);
+        }
+
+        .spin-button:disabled {
+            background: #666;
+            transform: scale(1);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #2a2a2a;
+            padding: 80px;
+            border-radius: 20px;
+            text-align: center;
+            color: #fff;
+            font-size: 48px;
+            animation: modalAppear 0.3s ease-out;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            user-select: none;
+        }
+
+        .modal-content.win {
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        .modal-content.lose {
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+        }
+
+        @keyframes modalAppear {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="https://zagip.ru" class="home-link">&lt; Назад</a>
+    <div class="game-container">
+        <div class="title">GipokrutkiЪ</div>
+        <div class="slot-machine">
+            <div class="slot">
+                <div class="slot-strip" id="strip1"></div>
+            </div>
+            <div class="slot">
+                <div class="slot-strip" id="strip2"></div>
+            </div>
+            <div class="slot">
+                <div class="slot-strip" id="strip3"></div>
+            </div>
+        </div>
+        <button class="spin-button" onclick="spin()"></button>
+    </div>
+
+    <div class="modal" id="winModal">
+        <div class="modal-content">
+            <span id="resultText"></span>
+        </div>
+    </div>
+
+    <script>
+        const symbols = [
+            'photos/vlppz.jpg',
+            'photos/gip.jpg',
+            'photos/ilstr.jpg',
+            'photos/ivblz.jpg',
+            'photos/logsa.jpg',
+            'photos/max.jpg'
+        ];
+
+        let isSpinning = false;
+        const strips = Array.from(document.querySelectorAll('.slot-strip'));
+        const button = document.querySelector('.spin-button');
+        const ITEM_HEIGHT = 150;
+        const MIN_ROTATIONS = 10;
+        const STOP_DELAY = 0.5;
+        const BASE_DURATION = 2;
+        let winningSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+
+        function addNewItems(strip) {
+            for (let i = 0; i < 5; i++) {
+                const item = document.createElement('div');
+                item.className = 'slot-item';
+                const img = document.createElement('img');
+                img.src = symbols[Math.floor(Math.random() * symbols.length)];
+                img.alt = 'slot symbol';
+                item.appendChild(img);
+                strip.appendChild(item);
+            }
+        }
+
+        function initializeStrip(strip) {
+            strip.innerHTML = '';
+            for (let i = 0; i < 20; i++) {
+                const item = document.createElement('div');
+                item.className = 'slot-item';
+                const img = document.createElement('img');
+                img.src = symbols[Math.floor(Math.random() * symbols.length)];
+                img.alt = 'slot symbol';
+                item.appendChild(img);
+                strip.appendChild(item);
+            }
+        }
+
+        function setWinningCombination(isWin) {
+            strips.forEach((strip, index) => {
+                strip.innerHTML = '';
+                for (let i = 0; i < 20; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'slot-item';
+                    const img = document.createElement('img');
+                    img.src = (i === 15 + index && isWin) ? winningSymbol : symbols[Math.floor(Math.random() * symbols.length)];
+                    img.alt = 'slot symbol';
+                    item.appendChild(img);
+                    strip.appendChild(item);
+                }
+            });
+        }
+
+        strips.forEach(strip => initializeStrip(strip));
+        setWinningCombination(true);
+
+        function animateStrip(strip, rotations, duration) {
+            return new Promise(resolve => {
+                const totalDistance = rotations * ITEM_HEIGHT;
+                let startTime = null;
+                let currentPosition = 0;
+
+                function update(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    const elapsed = (timestamp - startTime) / 1000;
+                    const progress = Math.min(elapsed / duration, 1);
+
+                    const easeInOutCubic = t => t < .5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1;
+                    const currentProgress = easeInOutCubic(progress);
+
+                    currentPosition = totalDistance * currentProgress;
+                    strip.style.transform = `translateY(${-currentPosition}px)`;
+
+                    if (currentPosition > ITEM_HEIGHT * (strip.children.length - 5)) {
+                        addNewItems(strip);
+                    }
+
+                    if (progress < 1) {
+                        requestAnimationFrame(update);
+                    } else {
+                        const finalPosition = Math.round(currentPosition / ITEM_HEIGHT) * ITEM_HEIGHT;
+                        strip.style.transform = `translateY(${-finalPosition}px)`;
+                        resolve();
+                    }
+                }
+
+                requestAnimationFrame(update);
+            });
+        }
+
+        async function spin() {
+            if (isSpinning) return;
+            isSpinning = true;
+            button.disabled = true;
+
+            const modal = document.getElementById('winModal');
+            const modalContent = modal.querySelector('.modal-content');
+            const resultText = document.getElementById('resultText');
+            modal.style.display = 'none';
+            modal.dataset.canClose = 'false';
+
+            const isTwoSame = Math.random() < 0.7; // ШАНС ЧТО ВЫПАДЕТ 2 ОДИНАКОВЫХ СЛОТА
+            const isThirdSame = Math.random() < 0.8; // ШАНС ЧТО ВЫПАДЕТ 3 ОДИНАКОВЫХ СЛОТА
+
+            let differentSlotIndex = -1;
+            let mainSymbol = null;
+            let differentSymbol = null;
+
+            if (isTwoSame) {
+                mainSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+                
+                if (!isThirdSame) {
+                    do {
+                        differentSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+                    } while (differentSymbol === mainSymbol);
+                    
+                    differentSlotIndex = Math.floor(Math.random() * 3);
+                }
+            } else {
+                const usedSymbols = new Set();
+                mainSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+                usedSymbols.add(mainSymbol);
+
+                do {
+                    differentSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+                } while (usedSymbols.has(differentSymbol));
+                usedSymbols.add(differentSymbol);
+
+                let thirdSymbol;
+                do {
+                    thirdSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+                } while (usedSymbols.has(thirdSymbol));
+
+                const finalSymbols = [mainSymbol, differentSymbol, thirdSymbol];
+                mainSymbol = finalSymbols[0];
+                differentSymbol = finalSymbols[1];
+                const tempSymbol = finalSymbols[2];
+                
+                strips.forEach((strip, index) => {
+                    if (index === differentSlotIndex) {
+                        strip.dataset.finalSymbol = differentSymbol;
+                    } else if (index === (differentSlotIndex + 1) % 3) {
+                        strip.dataset.finalSymbol = tempSymbol;
+                    } else {
+                        strip.dataset.finalSymbol = mainSymbol;
+                    }
+                });
+            }
+
+            const animations = strips.map((strip, index) => {
+                const rotations = 15 + index;
+                const duration = BASE_DURATION + (index * STOP_DELAY);
+                return animateStrip(strip, rotations, duration);
+            });
+
+            await Promise.all(animations);
+
+            resultText.textContent = 'Шкебед';
+            modalContent.classList.remove('win', 'lose');
+
+            modal.style.display = 'flex';
+
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            strips.forEach((strip, index) => {
+                strip.style.transition = 'none';
+                strip.style.transform = 'translateY(0)';
+                strip.innerHTML = '';
+                for (let i = 0; i < 20; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'slot-item';
+                    const img = document.createElement('img');
+                    if (i === 15 + index) {
+                        if (strip.dataset.finalSymbol) {
+                            img.src = strip.dataset.finalSymbol;
+                            delete strip.dataset.finalSymbol;
+                        } else {
+                            img.src = index === differentSlotIndex ? differentSymbol : mainSymbol;
+                        }
+                    } else {
+                        img.src = symbols[Math.floor(Math.random() * symbols.length)];
+                    }
+                    img.alt = 'slot symbol';
+                    item.appendChild(img);
+                    strip.appendChild(item);
+                }
+            });
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+            modal.dataset.canClose = 'true';
+
+            isSpinning = false;
+            button.disabled = false;
+            console.log("Spin ended");
+        }
+
+        document.getElementById('winModal').addEventListener('click', function() {
+            if (this.dataset.canClose === 'true') {
+                this.style.display = 'none';
+                this.dataset.canClose = 'false';
+            }
+        });
+    </script>
+</body>
+</html>
