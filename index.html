@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <a href="https://zagip.ru" class="home-link">&lt; Назад</a>
+    <a href="https://zagip.ru" class="home-link">← Назад</a>
     <div class="game-container">
         <div class="title">GipokrutkiЪ</div>
         <div class="slot-machine">
@@ -137,8 +137,8 @@
             modal.style.display = 'none';
             modal.dataset.canClose = 'false';
 
-            const isTwoSame = Math.random() < 0.7; // ШАНС ЧТО ВЫПАДЕТ 2 ОДИНАКОВЫХ СЛОТА
-            const isThirdSame = Math.random() < 0.8; // ШАНС ЧТО ВЫПАДЕТ 3 ОДИНАКОВЫХ СЛОТА
+            const isTwoSame = Math.random() < 0.3; // Изменено с 0.7 на 0.3 для уменьшения шанса победы
+            const isThirdSame = Math.random() < 0.3; // Изменено с 0.8 на 0.3 для соответствия общему шансу победы
 
             let differentSlotIndex = -1;
             let mainSymbol = null;
@@ -193,7 +193,7 @@
 
             await Promise.all(animations);
 
-            resultText.textContent = 'Шкебед'; // Шкебед
+            resultText.textContent = 'You win!'; // Шкебед
             modalContent.classList.remove('win', 'lose');
 
             modal.style.display = 'flex';
